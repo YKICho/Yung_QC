@@ -1,0 +1,58 @@
+---
+title: "Likelihood Ratio Test - DATA712 Homework 04"
+author: "Yung Ki Cho"
+date: "2025-03-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r load-data}
+library(readxl)
+library(lmtest)
+library(stats)
+
+setwd ("C:/Users/Yung Cho/Documents/GitHub/Yung_QC") 
+
+data16 <- read_xlsx("ANES 2016.xlsx", sheet = 2)
+# The ANES 2016 dataset alayzes voting behavitor and public opinion during the 2016 US presidential election.
+```
+
+```{r data-manipulation}
+data16 <- na.omit(data16)
+
+head(data16)
+```
+
+```{r likelihood-ratio-test (LRT)}
+# The likelihood ratio test is used to compare the goodness of fit between two competing models. It is based on the ratio of the likelihoods of the two models, a more complex model and a simpler model. The test statistic follows a chi-squared distribution, and the p-value is used to determine the significance of the difference in fit between the two models.
+
+full_model <- lm(vote16 ~ religious + education + feel.poor, data = data16)
+reduced_model <- lm(vote16 ~ education + feel.poor, data = data16)
+
+lrtest(full_model, reduced_model)
+# Model 1 adding religious significantly improves the model fit.The chisq is very large, and p-value is very small. this provides strong evidence against the null hypothesis.
+
+```                 
+```{r AIC and BIC models}
+# The AIC and BIC models are used to compare the goodness of fit between two models with different numbers of predictors. Lower values indicate a better fit. 
+
+model_0 <- lm(vote16 ~ 1, data = data16)
+model_1 <- lm(vote16 ~ religious, data = data16)
+model_2 <- lm(vote16 ~ religious + education, data = data16)
+model_3 <- lm(vote16 ~ religious + education + feel.poor, data = data16)
+
+AIC_calc <- AIC(model_0, model_1, model_2, model_3)
+BIC_calc <- BIC(model_0, model_1, model_2, model_3)    
+
+values <- data.frame(
+    "Model" = c("Vote", "+Religious", "++Education", "+++Feeling"),
+    "AIC" = AIC_calc,
+    "BIC" = BIC_calc
+)
+
+print(values)
+# The addition of each variable (Religious, Education, and feel.poor) improves the model's performance, as evidenced by decreasing AIC and BIC values.Based on this analysis, Model 3 (Vote ~ Religious + Education + feel.poor) is the best model because it has the lowest AIC and BIC values, indicating it is the most appropriate model for explaining voting behavior (Vote)
+```
