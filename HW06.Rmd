@@ -1,0 +1,112 @@
+---
+title: "Interaction Effects and Clarify - DATA712 Homework 05"
+author: "Yung Ki Cho"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::html_clean:
+    highlight: kate
+    self_contained: true
+    toc: true
+    toc_depth: 3
+    thumbnails: true
+    lightbox: true
+    gallery: true
+
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+set.seed(123)
+options(digits = 3, scipen = 999)
+
+```
+
+```{r load-libraries}
+library(rmdformats)
+library(clarify)
+library(AER)
+library(tidyverse)
+library(janitor)
+library(pscl)
+library(ggplot2)
+```
+
+```{r load-data, include = FALSE}
+setwd("C:/Users/Yung Cho/Documents/GitHub/Yung_QC")
+bc_data <- read.csv("NYCDCP_Manhattan_Bike_Counts_-_On_Street_Weekday_20250320.csv")
+
+str(bc_data)
+
+```
+
+```{r data-wrangling}
+colSums(is.na(bc_data))
+
+bc_data[is.na(bc_data)] <- 0
+
+sum(is.na(bc_data))
+
+```
+
+```{r 1st model glm}
+pm1 <- glm(Citibike_All ~ CycBikeLane,
+           family = poisson, data = bc_data)
+summary(pm1)
+
+```
+
+```{r Model 1 AME}
+sim_coefs1 <- sim(pm1)
+im_est1 <- sim_ame(sim_coefs1, var = "CycBikeLane",
+                    contrast = "rd")
+summary(sim_est1)
+
+```
+
+```{r 2nd glm}
+pm2 <- glm(Citibike_All ~ CycBikeLane + Cycl_Helmet_all,
+           family = poisson, data = bc_data)
+
+summary(pm2)
+
+```
+
+```{r Model 2 AME effect of bike lanes}
+sim_coefs2 <- sim(pm2)
+sim_est2 <- sim_ame(sim_coefs2, var = "CycBikeLane",
+                    contrast = "rd")
+summary(sim_est2)
+```
+```{r Model 2a AME effect of helmets}
+sim_est2a <- sim_ame(sim_coefs2, var = "Cycl_Helmet_all",
+                    contrast = "rd")
+summary(sim_est2a)
+```
+```{r adrf:prediction}
+sim_est2b <- sim_adrf(sim_coefs2, var = "CycBikeLane",
+                      contrast = "adrf")
+plot(sim_est2b)
+
+# The sudden increase after a long flat strongly suggest the presence of excess zero values.
+```
+
+```{r check for zeros}
+ggplot(bc_data, aes(x = Citibike_All)) + geom_histogram()
+```
+```{r zero-inflated poisson regression}
+pm4 <- pscl::zeroinfl(Citibike_All ~ CycBikeLane + Cycl_Helmet_all
+                      | 1, data = bc_data, dist = "poisson")
+summary(pm4)
+```
+```{r}
+# Manually supply the covariance matrix
+sim_coefs4 <- sim(pm4, vcov = vcov(pm4))
+
+# Proceed with the Average Marginal Effects (AME) calculation
+sim_est4 <- sim_ame(sim_coefs4, var = "Cycl_Helmet_all",
+                    contrast = "rd")
+
+# Summarize the results
+summary(sim_est4)
+```
